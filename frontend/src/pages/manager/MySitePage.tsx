@@ -4,7 +4,6 @@ import type { AppDispatch, RootState } from '../../app/store';
 import { fetchSiteThunk } from '../../features/sites/siteThunks';
 import PageHeader from '../../components/common/PageHeader';
 import Loader from '../../components/common/Loader';
-import { formatCurrency } from '../../utils/formatCurrency';
 
 export default function MySitePage() {
   const dispatch = useDispatch<AppDispatch>();

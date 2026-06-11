@@ -4,7 +4,7 @@ export interface WeeklyReport {
   total_issued: number;
   total_spent: number;
   surplus: number;
-  category_totals: Record<string, number>;
+  categories: Record<string, number>;
 }
 
 export interface WeeklyReportParams {

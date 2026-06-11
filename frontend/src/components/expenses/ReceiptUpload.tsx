@@ -14,13 +14,20 @@ export default function ReceiptUpload({ value, onChange }: ReceiptUploadProps) {
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file.');
+      e.target.value = '';
+      return;
+    }
+
     setUploading(true);
     setError('');
     try {
       const res = await uploadReceiptApi(file);
       onChange(res.data.url);
-    } catch {
-      setError('Upload failed. Please try again.');
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string; msg?: string } } };
+      setError(error.response?.data?.error || error.response?.data?.msg || 'Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
@@ -44,11 +51,11 @@ export default function ReceiptUpload({ value, onChange }: ReceiptUploadProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <p className="text-sm text-slate-400">Click to upload receipt</p>
-            <p className="text-xs text-slate-300 mt-1">JPG, PNG, PDF</p>
+            <p className="text-xs text-slate-300 mt-1">JPG, PNG, WEBP</p>
           </div>
         )}
       </div>
-      <input ref={inputRef} type="file" accept="image/*,application/pdf" onChange={handleFile} className="hidden" />
+      <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
       {uploading && <p className="text-xs text-amber-500 animate-pulse">Uploading...</p>}
       {error && <p className="form-error">{error}</p>}
     </div>

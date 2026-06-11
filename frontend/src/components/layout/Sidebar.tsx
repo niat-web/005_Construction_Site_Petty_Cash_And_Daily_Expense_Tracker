@@ -12,7 +12,7 @@ interface NavItem {
 
 interface SidebarProps {
   navItems: NavItem[];
-  role: 'admin' | 'manager';
+  role: 'admin' | 'project_manager' | 'supervisor';
 }
 
 export default function Sidebar({ navItems, role }: SidebarProps) {
@@ -46,7 +46,7 @@ export default function Sidebar({ navItems, role }: SidebarProps) {
         <span className={`text-xs font-semibold px-2 py-1 rounded-md uppercase tracking-wider ${
           role === 'admin' ? 'bg-amber-500/20 text-amber-400' : 'bg-blue-500/20 text-blue-400'
         }`}>
-          {role}
+          {role.replace('_', ' ')}
         </span>
       </div>
 

@@ -39,9 +39,5 @@ export const deleteExpenseApi = (id: number) =>
 export const uploadReceiptApi = (file: File) => {
   const formData = new FormData();
   formData.append('receipt', file);
-  return api.post<{ url: string }>('/upload-receipt', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  return api.post<{ url: string }>('/upload-receipt/', formData);
 };

@@ -4,7 +4,7 @@ from utils.cloudinary_utils import upload_image
 
 uploads_bp = Blueprint("uploads", __name__)
 
-@uploads_bp.post("/")
+@uploads_bp.post("/", strict_slashes=False)
 @jwt_required()
 def upload_receipt_route():
     if 'receipt' not in request.files:

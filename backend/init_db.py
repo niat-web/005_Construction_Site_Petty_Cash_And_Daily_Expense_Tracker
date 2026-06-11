@@ -1,22 +1,29 @@
 from app import create_app
 from database.db import db
 from database.models import User, Project, Site, CashIssuance, Expense
-from datetime import datetime, timedelta
+from datetime import datetime, UTC
 
 def init_db():
     app = create_app()
     with app.app_context():
+        db.create_all()
+        print("Database tables are ready.")
+
         # Check if admin already exists
         admin = User.query.filter_by(username="admin").first()
         if not admin:
             admin = User(username="admin", name="Super Admin", role="admin")
             admin.set_password("admin123")
             db.session.add(admin)
-            
+
+        user_admin = User.query.filter_by(username="vikrambalai1002@gmail.com").first()
+        if not user_admin:
             user_admin = User(username="vikrambalai1002@gmail.com", name="Vikram", role="admin")
             user_admin.set_password("password")
             db.session.add(user_admin)
-            
+
+        if db.session.new:
+            db.session.commit()
             print("Admin users created.")
 
         # Create Project
@@ -27,28 +34,36 @@ def init_db():
             db.session.commit()
             print("Project created.")
 
-            # Create Project Manager
+        # Create Project Manager
+        pm = User.query.filter_by(username="PM001").first()
+        if not pm:
             pm = User(username="PM001", name="Rajesh Kumar", role="project_manager", project_id=project.id)
             pm.set_password("default123")
             db.session.add(pm)
             db.session.commit()
             print("Project Manager PM001 created.")
 
-            # Create Site
+        # Create Site
+        site = Site.query.filter_by(site_code="SITE001").first()
+        if not site:
             site = Site(project_id=project.id, site_name="Tower A", site_code="SITE001")
             db.session.add(site)
             db.session.commit()
             print("Site SITE001 created.")
 
-            # Create Supervisor
+        # Create Supervisor
+        supervisor = User.query.filter_by(username="SITE001").first()
+        if not supervisor:
             supervisor = User(username="SITE001", name="Ramesh", role="supervisor", site_id=site.id)
             supervisor.set_password("default123")
             db.session.add(supervisor)
             db.session.commit()
             print("Supervisor SITE001 created.")
 
-            # Create dummy cash issuance
-            today = datetime.utcnow()
+        # Create dummy cash issuance
+        issuance = CashIssuance.query.filter_by(site_id=site.id, amount=10000).first()
+        if not issuance:
+            today = datetime.now(UTC).replace(tzinfo=None)
             issuance = CashIssuance(
                 site_id=site.id,
                 amount=10000,
@@ -59,25 +74,30 @@ def init_db():
             db.session.commit()
             print("Cash issuance created.")
 
-            # Create dummy expenses
+        # Create dummy expenses
+        if not Expense.query.filter_by(cash_issuance_id=issuance.id, description="Daily wages").first():
             exp1 = Expense(
                 cash_issuance_id=issuance.id,
                 category="Labour",
                 amount=1500,
                 description="Daily wages",
-                expense_time=today ,
+                expense_time=issuance.issue_date,
                 created_by=supervisor.id
             )
+            db.session.add(exp1)
+
+        if not Expense.query.filter_by(cash_issuance_id=issuance.id, description="Cement").first():
             exp2 = Expense(
                 cash_issuance_id=issuance.id,
                 category="Material",
                 amount=4500,
                 description="Cement",
-                expense_time=today,
+                expense_time=issuance.issue_date,
                 created_by=supervisor.id
             )
-            db.session.add(exp1)
             db.session.add(exp2)
+
+        if db.session.new:
             db.session.commit()
             print("Expenses created.")
 

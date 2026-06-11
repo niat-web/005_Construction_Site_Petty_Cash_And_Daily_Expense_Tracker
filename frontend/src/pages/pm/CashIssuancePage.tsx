@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store';
 import {
-  getIssuancesApi, createIssuanceApi, deleteIssuanceApi,
+  getIssuancesApi, createIssuanceApi,
 } from '../../api/cashApi';
 import type { CashIssuance } from '../../api/cashApi';
 import { fetchSitesThunk } from '../../features/sites/siteThunks';

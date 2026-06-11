@@ -30,11 +30,11 @@ export default function WeeklySummaryCard({ report }: WeeklySummaryCardProps) {
         </div>
       </div>
 
-      {report.category_totals && Object.keys(report.category_totals).length > 0 && (
+      {report.categories && Object.keys(report.categories).length > 0 && (
         <div className="card">
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Category Breakdown</h3>
           <div className="space-y-3">
-            {Object.entries(report.category_totals)
+            {Object.entries(report.categories)
               .sort(([, a], [, b]) => b - a)
               .map(([category, amount]) => {
                 const pct = report.total_spent > 0 ? (amount / report.total_spent) * 100 : 0;

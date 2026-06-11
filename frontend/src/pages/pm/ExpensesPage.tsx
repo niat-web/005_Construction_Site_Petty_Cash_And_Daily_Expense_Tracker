@@ -20,7 +20,7 @@ export default function PMExpensesPage() {
         title="Project Expenses"
         subtitle="View expenses across all sites in your project"
       />
-      {loading ? <Loader /> : <ExpenseTable expenses={expenses} hideActions />}
+      {loading ? <Loader /> : <ExpenseTable expenses={expenses} showActions={false} />}
     </div>
   );
 }

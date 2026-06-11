@@ -1,5 +1,4 @@
 import type { Site } from '../../api/siteApi';
-import { formatCurrency } from '../../utils/formatCurrency';
 import EmptyState from '../common/EmptyState';
 import Button from '../common/Button';
 import { Link } from 'react-router-dom';

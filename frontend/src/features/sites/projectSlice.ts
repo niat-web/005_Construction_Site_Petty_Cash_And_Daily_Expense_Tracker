@@ -1,5 +1,4 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import type { PayloadAction } from '@reduxjs/toolkit';
 import { getProjectsApi, createProjectApi, updateProjectApi, deleteProjectApi } from '../../api/projectApi';
 import type { Project, CreateProjectPayload } from '../../api/projectApi';
 
