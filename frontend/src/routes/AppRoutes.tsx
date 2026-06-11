@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/common/ProtectedRoute';
+import RoleRedirect from '../components/common/RoleRedirect';
 
 // Layouts
 import AdminLayout from '../layouts/AdminLayout';
@@ -39,6 +40,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Public */}
+      <Route path="/" element={<RoleRedirect />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Admin */}
@@ -98,7 +100,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<RoleRedirect />} />
     </Routes>
   );
 }

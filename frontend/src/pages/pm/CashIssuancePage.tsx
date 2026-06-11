@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../../app/store';
 import {
@@ -21,17 +21,16 @@ export default function PMCashIssuancePage() {
   const [showModal, setShowModal] = useState(false);
   const [issuing, setIssuing] = useState(false);
 
-  useEffect(() => {
-    dispatch(fetchSitesThunk());
-    loadIssuances();
-  }, [dispatch]);
-
-  const loadIssuances = async () => {
-    setLoading(true);
+  const loadIssuances = useCallback(async () => {
     const res = await getIssuancesApi();
     setIssuances(res.data);
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    dispatch(fetchSitesThunk());
+    loadIssuances();
+  }, [dispatch, loadIssuances]);
 
   const handleCreate = async (data: { site_id: number; amount: number; issue_date: string }) => {
     setIssuing(true);

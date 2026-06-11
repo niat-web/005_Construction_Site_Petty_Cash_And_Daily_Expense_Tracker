@@ -3,7 +3,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import type { AppDispatch, RootState } from '../../app/store';
 import { loginThunk } from '../../features/auth/authThunks';
-import { clearError } from '../../features/auth/authSlice';
+import { clearError, logout } from '../../features/auth/authSlice';
+import { getDashboardPath } from '../../utils/roleRoutes';
 import { useEffect } from 'react';
 
 export default function LoginPage() {
@@ -14,11 +15,14 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated && role) {
-      if (role === 'admin') navigate('/admin/dashboard', { replace: true });
-      else if (role === 'project_manager') navigate('/pm/dashboard', { replace: true });
-      else navigate('/supervisor/dashboard', { replace: true });
+      const dashboardPath = getDashboardPath(role);
+      if (dashboardPath) {
+        navigate(dashboardPath, { replace: true });
+      } else {
+        dispatch(logout());
+      }
     }
-  }, [isAuthenticated, role, navigate]);
+  }, [dispatch, isAuthenticated, role, navigate]);
 
   useEffect(() => {
     return () => { dispatch(clearError()); };

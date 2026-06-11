@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../app/store';
 import React from 'react';
+import { getDashboardPath } from '../../utils/roleRoutes';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -17,12 +18,13 @@ export default function ProtectedRoute({ children, role }: ProtectedRouteProps) 
 
   if (role) {
     const allowedRoles = Array.isArray(role) ? role : [role];
-    if (userRole && !allowedRoles.includes(userRole)) {
-      // Redirect to their correct dashboard
-      if (userRole === 'admin') return <Navigate to="/admin/dashboard" replace />;
-      if (userRole === 'project_manager') return <Navigate to="/pm/dashboard" replace />;
-      if (userRole === 'supervisor') return <Navigate to="/supervisor/dashboard" replace />;
+    if (!userRole) {
       return <Navigate to="/login" replace />;
+    }
+
+    if (!allowedRoles.includes(userRole)) {
+      const dashboardPath = getDashboardPath(userRole);
+      return <Navigate to={dashboardPath ?? '/login'} replace />;
     }
   }
 
