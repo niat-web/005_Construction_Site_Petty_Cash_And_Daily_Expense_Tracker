@@ -19,6 +19,8 @@ load_dotenv()
 import database.models
 
 from routes.auth import auth_bp
+from routes.projects import projects_bp
+from routes.users import users_bp
 from routes.sites import sites_bp
 from routes.issuances import issuances_bp
 from routes.expenses import expenses_bp
@@ -31,7 +33,7 @@ def create_app():
     CORS(app)
 
     # Configure PostgreSQL database and JWT
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'postgresql://postgres:postgres@localhost:5432/pettycash')
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', "sqlite:///pettycash.db")
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'super-secret-key-change-in-prod')
     
@@ -50,6 +52,8 @@ def create_app():
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(projects_bp, url_prefix='/api/projects')
+    app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(sites_bp, url_prefix='/api/sites')
     app.register_blueprint(issuances_bp, url_prefix='/api/cash-issuances')
     app.register_blueprint(expenses_bp, url_prefix='/api/expenses')
@@ -60,14 +64,15 @@ def create_app():
     @app.cli.command("create-admin")
     @click.option('--username', default='admin')
     @click.option('--password', default='admin123')
-    def create_admin(username, password):
+    @click.option('--name', default='Super Admin')
+    def create_admin(username, password, name):
         """Creates the initial admin user."""
         admin = User.query.filter_by(username=username).first()
         if admin:
             print(f"User {username} already exists.")
             return
         
-        user = User(username=username, role='admin')
+        user = User(username=username, name=name, role='admin')
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
@@ -81,4 +86,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, port=5000)
+    app.run(host="0.0.0.0",debug=True, port=5000)

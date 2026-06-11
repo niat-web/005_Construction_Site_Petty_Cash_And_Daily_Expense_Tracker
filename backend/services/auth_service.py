@@ -7,13 +7,15 @@ def authenticate_user(username, password):
     if user and user.check_password(password):
         additional_claims = {
             "role": user.role,
-            "site_id": user.site_id
+            "site_id": user.site_id,
+            "project_id": user.project_id
         }
         access_token = create_access_token(identity=user.username, additional_claims=additional_claims)
         return {
             "access_token": access_token,
             "role": user.role,
-            "site_id": user.site_id
+            "site_id": user.site_id,
+            "project_id": user.project_id
         }
     return None
 

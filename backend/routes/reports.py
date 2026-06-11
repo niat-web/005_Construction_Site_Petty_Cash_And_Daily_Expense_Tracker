@@ -1,35 +1,46 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from utils.auth_utils import admin_required, manager_required
-from services.report_service import get_weekly_summary
+from utils.decorators import admin_required, pm_required, supervisor_required
+import services.report_service as rs
+from database.models import Site
 
-reports_bp = Blueprint("reports", __name__)
+reports_bp = Blueprint('reports', __name__)
 
-@reports_bp.get("/weekly")
+@reports_bp.get('/weekly')
 @jwt_required()
-def get_weekly_summary_route():
-    # If admin, they can query any site via site_id query param
-    # If manager, they can only query their own site
+@supervisor_required()
+def get_weekly_report():
     claims = get_jwt()
     role = claims.get('role')
     
-    site_id_str = request.args.get('site_id')
-    
-    if role == 'manager':
-        site_id = claims.get('site_id')
-    else:
-        if not site_id_str:
-            return jsonify({"error": "site_id query parameter is required for admin"}), 400
-        site_id = int(site_id_str)
-        
-    start_date = request.args.get('week_start')
-    end_date = request.args.get('week_end')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    site_id = request.args.get('site_id', type=int)
     
     if not start_date or not end_date:
-        return jsonify({"error": "week_start and week_end query parameters are required"}), 400
+        return jsonify({"msg": "start_date and end_date are required (YYYY-MM-DD)"}), 400
+
+    site_ids = None
+
+    if role == 'admin':
+        if site_id:
+            site_ids = [site_id]
+        else:
+            site_ids = None # Get all sites
+    elif role == 'project_manager':
+        project_id = claims.get('project_id')
+        sites = Site.query.filter_by(project_id=project_id).all()
+        pm_site_ids = [s.id for s in sites]
         
-    try:
-        summary = get_weekly_summary(site_id, start_date, end_date)
-        return jsonify(summary), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        if site_id:
+            if site_id not in pm_site_ids:
+                return jsonify({"msg": "Unauthorized"}), 403
+            site_ids = [site_id]
+        else:
+            site_ids = pm_site_ids
+    else: # supervisor
+        my_site_id = claims.get('site_id')
+        site_ids = [my_site_id]
+        
+    data = rs.get_weekly_summary(site_ids, start_date, end_date)
+    return jsonify(data), 200

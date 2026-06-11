@@ -1,164 +1,127 @@
-from flask import Blueprint, jsonify, request
-from flask_jwt_extended import jwt_required, get_jwt
-from utils.auth_utils import admin_required, manager_required
-from services.expenses_service import (
-    add_expense, get_expenses, get_expense, update_expense, delete_expense
-)
-from services.issuances_service import get_issuance
+from flask import Blueprint, request, jsonify
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
+from utils.decorators import admin_required, pm_required, supervisor_required
+import services.expenses_service as es
+from database.models import User, Site, CashIssuance
 
-expenses_bp = Blueprint("expenses", __name__)
+expenses_bp = Blueprint('expenses', __name__)
 
-@expenses_bp.post("/")
+@expenses_bp.post('/')
 @jwt_required()
-@manager_required()
-def add_expense_route():
-    data = request.json
-    if not data or not all(k in data for k in ("issuance_id", "category", "amount")):
-        return jsonify({"error": "Missing required fields"}), 400
-    
-    # Validation: Manager can only create expenses for issuances belonging to their site
+@supervisor_required()
+def create_expense():
     claims = get_jwt()
-    site_id = claims.get('site_id')
-    issuance = get_issuance(data['issuance_id'])
-    if not issuance or issuance.site_id != site_id:
-        return jsonify({"error": "Invalid issuance_id for your site"}), 403
-
-    expense, shortfall_warning, balance = add_expense(data)
+    role = claims.get('role')
     
-    response_data = {
-        "id": expense.id,
-        "issuance_id": expense.issuance_id,
-        "category": expense.category,
-        "amount": expense.amount,
-        "description": expense.description,
-        "receipt_url": expense.receipt_url,
-        "expense_time": expense.expense_time.strftime("%Y-%m-%d %H:%M:%S")
-    }
-    
-    if shortfall_warning:
-        response_data["negative_balance"] = True
-        response_data["message"] = "Cash shortfall detected"
-        response_data["current_balance"] = balance
-
-    return jsonify(response_data), 201
-
-@expenses_bp.get("/")
-@jwt_required()
-@manager_required()
-def get_manager_expenses_route():
-    claims = get_jwt()
-    site_id = claims.get('site_id')
-    expenses = get_expenses(site_id=site_id)
-    return jsonify([
-        {
-            "id": e.id,
-            "issuance_id": e.issuance_id,
-            "category": e.category,
-            "amount": e.amount,
-            "description": e.description,
-            "receipt_url": e.receipt_url,
-            "expense_time": e.expense_time.strftime("%Y-%m-%d %H:%M:%S")
-        } for e in expenses
-    ]), 200
-
-@expenses_bp.get("/<int:id>")
-@jwt_required()
-@manager_required()
-def get_manager_expense_route(id):
-    claims = get_jwt()
-    site_id = claims.get('site_id')
-    expense = get_expense(id)
-    if not expense:
-        return jsonify({"error": "Expense not found"}), 404
-    
-    issuance = get_issuance(expense.issuance_id)
-    if not issuance or issuance.site_id != site_id:
-        return jsonify({"error": "Access denied"}), 403
-
-    return jsonify({
-        "id": expense.id,
-        "issuance_id": expense.issuance_id,
-        "category": expense.category,
-        "amount": expense.amount,
-        "description": expense.description,
-        "receipt_url": expense.receipt_url,
-        "expense_time": expense.expense_time.strftime("%Y-%m-%d %H:%M:%S")
-    }), 200
-
-@expenses_bp.put("/<int:id>")
-@jwt_required()
-@manager_required()
-def edit_expense_route(id):
-    claims = get_jwt()
-    site_id = claims.get('site_id')
-    expense = get_expense(id)
-    
-    if not expense:
-        return jsonify({"error": "Expense not found"}), 404
+    # Only supervisors can create expenses
+    if role != 'supervisor':
+        return jsonify({"msg": "Only supervisors can create expenses"}), 403
         
-    issuance = get_issuance(expense.issuance_id)
-    if not issuance or issuance.site_id != site_id:
-        return jsonify({"error": "Access denied"}), 403
-
-    data = request.json
-    updated_expense, shortfall_warning, balance = update_expense(id, data)
-    
-    response_data = {
-        "message": "Expense updated successfully",
-        "expense": {
-            "id": updated_expense.id,
-            "issuance_id": updated_expense.issuance_id,
-            "category": updated_expense.category,
-            "amount": updated_expense.amount,
-            "description": updated_expense.description,
-            "receipt_url": updated_expense.receipt_url,
-            "expense_time": updated_expense.expense_time.strftime("%Y-%m-%d %H:%M:%S")
-        }
-    }
-    
-    if shortfall_warning:
-        response_data["negative_balance"] = True
-        response_data["warning"] = "Cash shortfall detected"
-        response_data["current_balance"] = balance
-
-    return jsonify(response_data), 200
-
-@expenses_bp.delete("/<int:id>")
-@jwt_required()
-@manager_required()
-def delete_expense_route(id):
-    claims = get_jwt()
-    site_id = claims.get('site_id')
-    expense = get_expense(id)
-    
-    if not expense:
-        return jsonify({"error": "Expense not found"}), 404
+    data = request.get_json()
+    if not data or not data.get('cash_issuance_id') or not data.get('amount') or not data.get('category'):
+        return jsonify({"msg": "Missing required fields"}), 400
         
-    issuance = get_issuance(expense.issuance_id)
-    if not issuance or issuance.site_id != site_id:
-        return jsonify({"error": "Access denied"}), 403
+    # Validate the issuance belongs to the supervisor's site
+    issuance = CashIssuance.query.get(data.get('cash_issuance_id'))
+    if not issuance:
+        return jsonify({"msg": "Issuance not found"}), 404
+        
+    if issuance.site_id != claims.get('site_id'):
+        return jsonify({"msg": "You can only add expenses to issuances for your site"}), 403
+        
+    username = get_jwt_identity()
+    user = User.query.filter_by(username=username).first()
+    
+    expense, is_shortfall, balance = es.add_expense(data, created_by=user.id if user else None)
+    
+    response = {
+        "expense": expense,
+        "current_balance": balance
+    }
+    if is_shortfall:
+        response["negative_balance"] = True
+        response["message"] = "Cash shortfall detected"
+        
+    return jsonify(response), 201
 
-    success = delete_expense(id)
-    return jsonify({"message": "Expense deleted successfully"}), 200
-
-# ADMIN routes for expenses
-from flask import Blueprint
-
-# Using same blueprint, but with different prefix in spec: /api/admin/expenses
-# So we map it directly:
-@expenses_bp.get("/all")
+@expenses_bp.get('/')
 @jwt_required()
-@admin_required()
-def get_admin_expenses_route():
-    expenses = get_expenses()
-    return jsonify([
-        {
-            "id": e.id,
-            "issuance_id": e.issuance_id,
-            "category": e.category,
-            "amount": e.amount,
-            "description": e.description,
-            "receipt_url": e.receipt_url,
-            "expense_time": e.expense_time.strftime("%Y-%m-%d %H:%M:%S")
-        } for e in expenses
-    ]), 200
+@supervisor_required()
+def get_expenses():
+    claims = get_jwt()
+    role = claims.get('role')
+    site_id = request.args.get('site_id', type=int)
+
+    if role == 'admin':
+        expenses = es.get_expenses(site_id=site_id)
+    elif role == 'project_manager':
+        project_id = claims.get('project_id')
+        sites = Site.query.filter_by(project_id=project_id).all()
+        site_ids = [s.id for s in sites]
+        
+        if site_id:
+            if site_id not in site_ids:
+                return jsonify({"msg": "Unauthorized"}), 403
+            expenses = es.get_expenses(site_id=site_id)
+        else:
+            expenses = es.get_expenses(site_ids=site_ids)
+    else: # supervisor
+        my_site_id = claims.get('site_id')
+        expenses = es.get_expenses(site_id=my_site_id)
+        
+    return jsonify(expenses), 200
+
+@expenses_bp.put('/<int:id>')
+@jwt_required()
+@supervisor_required()
+def update_expense(id):
+    claims = get_jwt()
+    role = claims.get('role')
+    
+    if role != 'supervisor':
+        return jsonify({"msg": "Only supervisors can update expenses"}), 403
+        
+    expense_data = es.get_expense(id)
+    if not expense_data:
+        return jsonify({"msg": "Expense not found"}), 404
+        
+    issuance = CashIssuance.query.get(expense_data['cash_issuance_id'])
+    if not issuance or issuance.site_id != claims.get('site_id'):
+        return jsonify({"msg": "Unauthorized"}), 403
+        
+    data = request.get_json()
+    expense, is_shortfall, balance = es.update_expense(id, data)
+    
+    response = {
+        "expense": expense,
+        "current_balance": balance
+    }
+    if is_shortfall:
+        response["negative_balance"] = True
+        response["message"] = "Cash shortfall detected"
+        
+    return jsonify(response), 200
+
+@expenses_bp.delete('/<int:id>')
+@jwt_required()
+@supervisor_required()
+def delete_expense(id):
+    claims = get_jwt()
+    role = claims.get('role')
+    
+    if role != 'supervisor':
+        return jsonify({"msg": "Only supervisors can delete expenses"}), 403
+        
+    expense_data = es.get_expense(id)
+    if not expense_data:
+        return jsonify({"msg": "Expense not found"}), 404
+        
+    issuance = CashIssuance.query.get(expense_data['cash_issuance_id'])
+    if not issuance or issuance.site_id != claims.get('site_id'):
+        return jsonify({"msg": "Unauthorized"}), 403
+        
+    success, balance = es.delete_expense(id)
+    if not success:
+        return jsonify({"msg": "Failed to delete"}), 500
+        
+    return jsonify({"msg": "Expense deleted", "current_balance": balance}), 200

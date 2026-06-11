@@ -1,102 +1,67 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from utils.auth_utils import admin_required, manager_required
-from services.sites_service import (
-    create_site, get_sites, get_site, update_site, delete_site
-)
+from utils.decorators import admin_required, pm_required, supervisor_required
+import services.sites_service as ss
 
-sites_bp = Blueprint("sites", __name__)
+sites_bp = Blueprint('sites', __name__)
 
-@sites_bp.get("/")
+@sites_bp.post('/')
 @jwt_required()
 @admin_required()
-def get_all_sites_route():
-    sites = get_sites()
-    return jsonify([
-        {
-            "id": s.id,
-            "project_name": s.project_name,
-            "site_code": s.site_code,
-            "pm_name": s.pm_name,
-            "monthly_budget": s.monthly_budget
-        } for s in sites
-    ]), 200
-
-@sites_bp.get("/<int:id>")
-@jwt_required()
-@admin_required()
-def get_site_route(id):
-    site = get_site(id)
-    if not site:
-        return jsonify({"error": "Site not found"}), 404
-    return jsonify({
-        "id": site.id,
-        "project_name": site.project_name,
-        "site_code": site.site_code,
-        "pm_name": site.pm_name,
-        "monthly_budget": site.monthly_budget
-    }), 200
-
-@sites_bp.post("/")
-@jwt_required()
-@admin_required()
-def add_site_route():
-    data = request.json
-    if not data or not all(k in data for k in ("project_name", "site_code", "pm_name", "monthly_budget")):
-        return jsonify({"error": "Missing required fields"}), 400
+def create_site():
+    data = request.get_json()
+    if not data or not data.get('project_id') or not data.get('site_name') or not data.get('site_code'):
+        return jsonify({"msg": "Missing project_id, site_name, or site_code"}), 400
     
-    site = create_site(data)
-    return jsonify({
-        "id": site.id,
-        "project_name": site.project_name,
-        "site_code": site.site_code,
-        "pm_name": site.pm_name,
-        "monthly_budget": site.monthly_budget
-    }), 201
+    site = ss.create_site(data)
+    return jsonify(site), 201
 
-@sites_bp.put("/<int:id>")
+@sites_bp.get('/')
 @jwt_required()
-@admin_required()
-def edit_site_route(id):
-    data = request.json
-    site = update_site(id, data)
-    if not site:
-        return jsonify({"error": "Site not found"}), 404
-    return jsonify({
-        "message": "Site updated successfully",
-        "site": {
-            "id": site.id,
-            "project_name": site.project_name,
-            "site_code": site.site_code,
-            "pm_name": site.pm_name,
-            "monthly_budget": site.monthly_budget
-        }
-    }), 200
-
-@sites_bp.delete("/<int:id>")
-@jwt_required()
-@admin_required()
-def delete_site_route(id):
-    success = delete_site(id)
-    if not success:
-        return jsonify({"error": "Site not found"}), 404
-    return jsonify({"message": "Site deleted successfully"}), 200
-
-
-@sites_bp.get("/my-site")
-@jwt_required()
-@manager_required()
-def get_my_site_route():
+@pm_required()
+def get_sites():
     claims = get_jwt()
-    site_id = claims.get('site_id')
-    site = get_site(site_id)
-    if not site:
-        return jsonify({"error": "Site not found"}), 404
+    if claims.get('role') == 'admin':
+        sites = ss.get_sites()
+    else:
+        # Project manager only gets sites for their project
+        project_id = claims.get('project_id')
+        sites = ss.get_sites_by_project(project_id)
         
-    return jsonify({
-        "id": site.id,
-        "project_name": site.project_name,
-        "site_code": site.site_code,
-        "pm_name": site.pm_name,
-        "monthly_budget": site.monthly_budget
-    }), 200
+    return jsonify(sites), 200
+
+@sites_bp.get('/<int:id>')
+@jwt_required()
+@supervisor_required()
+def get_site(id):
+    claims = get_jwt()
+    site = ss.get_site(id)
+    if not site:
+        return jsonify({"msg": "Site not found"}), 404
+        
+    role = claims.get('role')
+    if role == 'project_manager' and site['project_id'] != claims.get('project_id'):
+        return jsonify({"msg": "Unauthorized access to site"}), 403
+    elif role == 'supervisor' and site['id'] != claims.get('site_id'):
+        return jsonify({"msg": "Unauthorized access to site"}), 403
+        
+    return jsonify(site), 200
+
+@sites_bp.put('/<int:id>')
+@jwt_required()
+@admin_required()
+def update_site(id):
+    data = request.get_json()
+    site = ss.update_site(id, data)
+    if not site:
+        return jsonify({"msg": "Site not found"}), 404
+    return jsonify(site), 200
+
+@sites_bp.delete('/<int:id>')
+@jwt_required()
+@admin_required()
+def delete_site(id):
+    success = ss.delete_site(id)
+    if not success:
+        return jsonify({"msg": "Site not found"}), 404
+    return jsonify({"msg": "Site deleted"}), 200
