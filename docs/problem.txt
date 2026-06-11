@@ -1,0 +1,35 @@
+Introduction Session
+This section covers everything the instructor should explain in the Introduction Video (Day 1). Students must watch and understand this
+before any coding begins.
+1. About the Company
+Dhatri Constructions is a real estate construction company in Hyderabad managing residential and commercial building projects. Site supervisors handle
+daily operational expenses — buying tools, paying daily-wage labour, fuel, transportation, and small material items — using petty cash given to them
+each morning. Without a structured tracking system, petty cash reconciliation is done at month-end from a bundle of paper receipts, making it impossible
+to control costs at the project level in real time.
+2. The Problem They Face
+Dhatri Constructions gives petty cash to site supervisors daily across multiple active construction sites. All expenses are tracked on paper receipt
+bundles submitted at week-end. Project managers do not know how much has been spent this week on each site until the receipts are submitted,
+counted, and tallied manually.
+Problem: Tracks petty cash issued to each construction site supervisor daily, records individual expense entries with category
+(labour/material/tool hire/transport/food/misc), captures receipt photos, calculates running balance (issued − spent), and generates
+site-wise weekly expense summaries for project cost control. At present, this type of work can become slow or scattered when it
+depends only on calls, WhatsApp messages, spreadsheets, or manual follow-up.
+This results in:
+• Petty cash issued per site per day is tracked on paper — the total issued vs total spent for each site is unknown until the week-end reconciliation
+• Expense entries are collected as paper receipts — some receipts are lost before submission, creating unverifiable cash gaps
+• Project managers cannot see site-level spending by category (labour vs materials vs tools) — they cannot identify where cost overruns are
+occurring
+• Petty cash advances to supervisors are not linked to specific project budgets — overspending on one project is only discovered at month-end
+• At month-end, finance spends 2-3 days manually categorising hundreds of paper receipts — this data arrives too late to control costs
+3. What We Are Building
+We are building the Construction Site Petty Cash & Daily Expense Tracker for Dhatri Constructions — a system where site supervisors log every
+expense on their phone and project managers see site-level spending in real time.
+How the system works:
+• Step 1 - Admin registers each construction site with project name, site code, project manager, and monthly petty cash budget
+• Step 2 - Each morning, admin issues petty cash to the site supervisor: site, supervisor name, amount issued, date
+• Step 3 - Throughout the day, the supervisor logs each expense: category (Labour/Material/Tools/Transport/Food/Misc), amount, description, and
+optionally a receipt photo
+• Step 4 - Running balance is calculated: balance = total_issued_today − total_spent_today
+• Step 5 - If balance goes negative, the system flags it as a cash shortfall requiring explanation
+• Step 6 - Project manager views the site dashboard: today's issued, today's spent, balance, and category-wise breakdown
+• Step 7 - Weekly expense summary shows: total issued, total spent, surplus/deficit, and category-wise total for each site
